@@ -1,0 +1,9 @@
+[{ "prefix": "rdfs", "url": "http://www.w3.org/2000/01/rdf-schema#"},
+  { "prefix": "rdf", "url": "http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
+  { "prefix": "ns", "url": "http://rdfs.org/sioc/ns#"},
+  { "prefix": "type", "url": "http://rdfs.org/sioc/types#"},
+  { "prefix": "xsd", "url": "http://www.w3.org/2001/XMLSchema#"}, 
+  { "prefix": "owl", "url": "http://www.w3.org/2002/07/owl#"},
+  { "prefix": "dbpedia-owl", "url": "http://dbpedia.org/ontology/"},
+  { "prefix": "dbpprop", "url": "http://dbpedia.org/property/"},
+  { "prefix": "dbres", "url": "http://dbpedia.org/resource/"}]
