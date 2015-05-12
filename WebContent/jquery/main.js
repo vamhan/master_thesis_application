@@ -145,7 +145,7 @@ function init(json){
 	.attr("y", "-8px")
 	.attr("width", "16px")
 	.attr("height", "16px")
-	.style("fill", "#CFEFCF")
+	.style("fill", function(d){return d.color == null ? "#CFEFCF" : d.color})
 	.style("stroke", "#000");
 
 
@@ -286,7 +286,7 @@ function restart(url, type, endpoint, resource){
 				});
 				$.ajax({
 					type: "GET",
-					url: API_PATH + "/types/ns:Dataset/instances?repo_name=" + REPO_NAME,
+					url: API_PATH + "/types/ns:Dataset/instances?repo_name=" + REPO_NAME + "&level=model",
 					dataType: 'json',
 					headers: {
 						"Authorization": "Basic " + btoa(username + ":" + password)
@@ -317,13 +317,13 @@ function restart(url, type, endpoint, resource){
 	} else if (type == "instance") {
 		$.ajax({
 			type: "GET",
-			url: API_PATH + "/instances/" + url + "/properties?repo_name=" + REPO_NAME,
+			url: API_PATH + "/instances/" + url + "/properties?repo_name=" + REPO_NAME + "&level=instance",
 			dataType: 'json',
 			headers: {
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},
 			success: function (data){
-				nodes.push({name: url, uri: url, type: "uri", scope:"instance"})
+				nodes.push({name: url, uri: url, type: "uri", scope:"instance", color:"#8000FF"})
 				$.each(data, function(key, val) {
 					var node1 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope:"instance"};
 					if (!containsObject(node1, nodes)) {
@@ -384,6 +384,7 @@ function restart(url, type, endpoint, resource){
 			type: "GET",
 			url: urlS,
 			dataType: 'json',
+			cache:false,
 			headers: {
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},

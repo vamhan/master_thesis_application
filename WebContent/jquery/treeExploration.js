@@ -46,7 +46,7 @@ function retrieveTree(node, prop, type) {
 				success: function (data){
 					$.each(data, function(key, val) {
 						var name = getPrefix(data[key].instance);
-						$("li:contains('" + getPrefix(data[key].type) +"')").append("<ul><li><a href='./?instance=" + getPrefix(data[key].instance) + (isDic ? "&dictionary=" : "") + "'>" + name + "</a></li></ul>");
+						$("li:contains('" + getPrefix(data[key].type) +"')").append("<ul><li><a href='./?instance=" + getPrefix(data[key].instance) + (isDic ? "&dictionary=" : "") + "'><font color='8000FF'>" + name + "</font></a></li></ul>");
 					});
 					retrieveProperties(prop, type);
 				}
@@ -87,6 +87,7 @@ function retrieveProperties(instance, type) {
 		type: "GET",
 		url: API_PATH + "/instances/" + instance + "/properties?repo_name=" + REPO_NAME + "&level=" + type,
 		dataType: 'json',
+		cache:false,
 		headers: {
 			"Authorization": "Basic " + btoa(username + ":" + password)
 		},
@@ -110,9 +111,9 @@ function retrieveProperties(instance, type) {
 					"<td>" + data[key].name + "</td>" +
 					"<td><a href='./?model=" + getPrefix(data[key].type) + (isDic ? "&dictionary=" : "") + "'>" + getPrefix(data[key].type) + "</a></td>";
 				} else {
-					content = "<tr><td name='info_object'><a href='./?" + type + "=" + getPrefix(data[key].object) + (isDic ? "&dictionary=" : "") + "'>" + data[key].object.substring(0, data[key].object.indexOf(" ")) + "</a></td>" +
+					content = "<tr><td name='info_object'>" + data[key].object.substring(0, data[key].object.indexOf("lang=") - 1) + "</td>" +
 					"<td></td>" +
-					"<td><a href='./?model=" + getPrefix(data[key].type) + (isDic ? "&dictionary=" : "") + "'>" + getPrefix("<" + data[key].object.substring(data[key].object.indexOf("type=") + 5, data[key].object.length) + ">") + "</a></td>";
+					"<td>" + getPrefix("<" + data[key].object.substring(data[key].object.indexOf("type=") + 5, data[key].object.length) + ">") + "</td>";
 				}
 				
 				if (type == "instance") {
@@ -400,8 +401,16 @@ function editPredicate(isEdit, newPre, type) {
 	if ($("#edit_object_predicate").val().indexOf('"') >= 0  && !$("#edit_type_predicate_div").is(":visible")) { //literal
 		$("#edit_type_predicate_div").show();
 	} else if ($("#edit_object_predicate").val().indexOf('"') >= 0  && $("#edit_type_predicate_div").is(":visible")) {
-		$("#info_predicate").val($("#edit_predicate_dropdown").val());
-		addModelTriple(type);
+		if (newPre) {
+			if (type == "model") {
+				$("#info_predicate").val($("#edit_predicate").val());
+			} else {
+				$("#info_predicate").val($("#edit_predicate_dropdown").val());
+			}
+			addPredicate(type);
+		} else {
+			addModelTriple();
+		}
 	} else { // URI
 		$.ajax({
 			type: "GET",
