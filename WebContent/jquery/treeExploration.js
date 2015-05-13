@@ -8,20 +8,21 @@ var prefix;
 var username = "dba";
 var password = "dba";
 var dicNS = "ns:Dictionary";
-var isDic = false;
 
 function initPrefix(filename) {
 	$.ajax({
 		type: "GET",
 		url: './prefix/' + filename,
 		dataType: 'json',
+		async: false,
 		success: function (data){
 			prefix = data;
 		}
 	});
 }
 
-function retrieveTree(node, prop, type) {
+function retrieveTree(node) {
+	var isDic = false;
 	if (node == dicNS) {
 		isDic = true;
 	}
@@ -29,26 +30,39 @@ function retrieveTree(node, prop, type) {
 		type: "GET",
 		url: API_PATH + "/types/" + node +"/hierarchy?repo_name=" + REPO_NAME,
 		dataType: 'json',
+		async: false,
 		headers: {
 			"Authorization": "Basic " + btoa(username + ":" + password)
 		},
 		success: function (data){
-			html = "<ul><li><a href='./?model=" + printhtml(node) + (isDic ? "&dictionary=" : "") + "'>" + printhtml(node) + "</a></li>";
-			recurTree(data, node);
-			$("#tree_menu").append(html);
+			html = "<div style='margin-bottom:15px'><input type='image' src='images/embed-plus.gif' alt='Expand' width='15' height='15' style='margin:0 5px 0 0' onclick='expand(this)'/>" +
+				   "<a name='a_tree' href='./?model=" + printhtml(node) + (isDic ? "&dictionary=" : "") + "' style='margin:0;padding-left:0'>" + printhtml(node) + "</a>";
+			html += "<div style='margin-left:15px;display:none'><p style='background-color:lightsteelblue'>subclass</p>";
+			recurTree(data, node, isDic);
+			html += "<p style='background-color:lightsteelblue'>instance</p>";
+			$("#tree_menu").append(html + "</div>");
 			$.ajax({
 				type: "GET",
 				url: API_PATH + "/types/" + node + "/instances?repo_name=" + REPO_NAME,
 				dataType: 'json',
+				async: false,
 				headers: {
 					"Authorization": "Basic " + btoa(username + ":" + password)
 				},
 				success: function (data){
 					$.each(data, function(key, val) {
 						var name = getPrefix(data[key].instance);
-						$("li:contains('" + getPrefix(data[key].type) +"')").append("<ul><li><a href='./?instance=" + getPrefix(data[key].instance) + (isDic ? "&dictionary=" : "") + "'><font color='8000FF'>" + name + "</font></a></li></ul>");
+						var element;
+						$("a[name='a_tree']").each(function(){
+						    if($(this).html() == getPrefix(data[key].type)){
+						        element = $(this).next();
+						    }
+						});
+						/*if (element.html().indexOf(">instance</p>") < 0) {
+							element.append("<p style='background-color:lightsteelblue'>instance</p>");
+						}*/
+						element.append("<a name='a_tree' href='./?instance=" + getPrefix(data[key].instance) + (isDic ? "&dictionary=" : "") + "'>" + name + "</a><br>");
 					});
-					retrieveProperties(prop, type);
 				}
 			});
 		}
@@ -66,21 +80,37 @@ function retrieveTree(node, prop, type) {
 	});*/
 }
 
-function recurTree(data, node) {
-	html += "<ul>";
+function recurTree(data, node, isDic) {
 	$.each(data, function(key, val) {
 		if (getPrefix(data[key].type) == node) {
 			isType = true;
 			var name = getPrefix(data[key].class);
-			html += "<li><a href='./?model=" + getPrefix(data[key].class) + (isDic ? "&dictionary=" : "") + "'>" + name + "</a></li>";
+			html += "<input type='image' src='images/embed-plus.gif' alt='Expand' width='15' height='15' style='margin:0 5px 0 0' onclick='expand(this)'/>" +
+				"<a name='a_tree' href='./?model=" + getPrefix(data[key].class) + (isDic ? "&dictionary=" : "") + "'>" + name + "</a>";
+			html += "<div style='margin-left:15px;display:none'><p style='background-color:lightsteelblue'>subclass</p>";
 			recurTree(data, getPrefix(data[key].class), html);
+			html += "<p style='background-color:lightsteelblue'>instance</p>";
+			html += "</div><br>";
 		}
 	});
-	html += "</ul>"
+}
+
+function highlight(node) {
+	$("a[name='a_tree']").each(function(){
+	    if($(this).html() == node){
+	        $(this).css("background-color", "red");
+	        $(this).parents().show();
+	    }
+	});
 }
 
 
-function retrieveProperties(instance, type) {
+function retrieveProperties(instance, type, isDic) {
+	if (type == "model") {
+		$("#contentbar").append("<h1>Model Level</h2>");
+	} else {
+		$("#contentbar").append("<h1>Instance Level</h2>");
+	}
 	$("#contentbar").append("<h2 id='info_subject'>" + printhtml(instance) + "</h2>");
 
 	$.ajax({
@@ -170,14 +200,19 @@ function openEditPredicate(object, predicate, isAdd, newPre, type) {
 	$("#edit_predicate").show();
 	$("#edit_predicate_dropdown").hide();
 	$("#edit_predicate_dropdown").html("");
+	$("#edit_predicate_title").html("Add new predicate for " +  $("#info_subject").html());
+	$("#edit_predicate_label").html("Predicate");
+	$("#edit_new_object_predicate_div").hide();
 	if (isAdd) {
 		if (newPre) {
-			$("#dialog-form-predicate").dialog( "option", "title", "Add New Predicate" );
 			
 			if (type == "instance") {
+				$("#dialog-form-predicate").dialog( "option", "title", "Add Property" );
 				$("#edit_label_predicate_div").hide();
 				$("#edit_predicate").hide();
 				$("#edit_predicate_dropdown").show();
+				$("#edit_predicate_title").html("Add property for " + $("#info_subject").html());
+				$("#edit_predicate_label").html("Choose from inherited relationships:");
 				var url = API_PATH + "/instances/" + $("#info_subject").html() + "/model_properties?repo_name=" + REPO_NAME + "&level=instance";
 				$.ajax({
 					type: "GET",
@@ -188,9 +223,32 @@ function openEditPredicate(object, predicate, isAdd, newPre, type) {
 					},
 					success: function (data){
 						$.each(data, function(key, val) {
-							$("#edit_predicate_dropdown").append("<option value='" + printhtml(val.predicate) + "'>" + printhtml(val.predicate) + "</option>");
+							if (val.predicate != "<http://www.w3.org/2000/01/rdf-schema#subClassOf>") {
+								$("#edit_predicate_dropdown").append("<option value='" + getPrefix(val.predicate) + "'>" + getPrefix(val.predicate) + "</option>");
+							}
 						});
+						$("#edit_predicate_dropdown").val($("#edit_predicate_dropdown option:first").val());
+						predicateChange();
 					}
+				});
+				
+			} else {
+				$("#dialog-form-predicate").dialog( "option", "title", "Add New Predicate" );
+				var query = "SELECT distinct ?subject from <" + REPO_NAME + "/model> WHERE { "
+				+ "?subject ?p ?o ."
+				+ "}";
+				var url = API_PATH + "/sparql?query=" + encodeURIComponent(query);
+				$.ajax({
+				    type: "GET",
+				    url: url,
+				    headers: {
+						"Authorization": "Basic " + btoa(username + ":" + password)
+					},
+				    success: function(data){
+				    	$.each(data, function(key, val) {
+							$("#edit_object_predicate").append("<option value='" + getPrefix(val.subject) + "'>" + getPrefix(val.subject) + "</option>");
+						});			
+				    }
 				});
 			}
 			
@@ -398,53 +456,52 @@ function deleteTriple(callback, type) {
 } 
 
 function editPredicate(isEdit, newPre, type) {
-	if ($("#edit_object_predicate").val().indexOf('"') >= 0  && !$("#edit_type_predicate_div").is(":visible")) { //literal
-		$("#edit_type_predicate_div").show();
-	} else if ($("#edit_object_predicate").val().indexOf('"') >= 0  && $("#edit_type_predicate_div").is(":visible")) {
-		if (newPre) {
-			if (type == "model") {
-				$("#info_predicate").val($("#edit_predicate").val());
-			} else {
-				$("#info_predicate").val($("#edit_predicate_dropdown").val());
-			}
-			addPredicate(type);
-		} else {
-			addModelTriple();
-		}
-	} else { // URI
-		$.ajax({
-			type: "GET",
-			url: API_PATH + "/instances/" + decodehtml($("#edit_object_predicate").val()) + "/properties?repo_name=" + REPO_NAME + "&level=instance",
-			dataType: 'json',
-			headers: {
-				"Authorization": "Basic " + btoa(username + ":" + password)
-			},
-			success: function (data){
-				if (data.length == 0 && !$("#edit_label_predicate_div").is(":visible")) {
-					$(".validateTips").html("Object not exist! Add information about its label");
-					$("#edit_label_predicate_div").show();
-					$("#edit_type_predicate_div").show();
+	if ($("#edit_object_predicate").val() == "new_literal") {
+			if (newPre) {
+				if (type == "model") {
+					$("#info_predicate").val($("#edit_predicate").val());
 				} else {
-					
-					if (isEdit) {	// edit triple
-					// delete previous triple first, then add new one
-						deleteTriple(addModelTriple, type);
-					} else {		// add triple
-						if (newPre) {
-							if (type == "model") {
-								$("#info_predicate").val($("#edit_predicate").val());
-							} else {
-								$("#info_predicate").val($("#edit_predicate_dropdown").val());
-							}
-							addPredicate(type);
-						} else {
-							addModelTriple();
-						}
-					}
-					
+					$("#info_predicate").val($("#edit_predicate_dropdown").val());
 				}
+				addPredicate(type);
+			} else {
+				addModelTriple();
 			}
-		});
+		} else { // URI
+			$.ajax({
+				type: "GET",
+				url: API_PATH + "/instances/" + decodehtml($("#edit_object_predicate").val()) + "/properties?repo_name=" + REPO_NAME + "&level=instance",
+				dataType: 'json',
+				headers: {
+					"Authorization": "Basic " + btoa(username + ":" + password)
+				},
+				success: function (data){
+					if (data.length == 0 && !$("#edit_label_predicate_div").is(":visible")) {
+						$(".validateTips").html("Object not exist! Add information about its label");
+						$("#edit_label_predicate_div").show();
+						$("#edit_type_predicate_div").show();
+					} else {
+						
+						if (isEdit) {	// edit triple
+						// delete previous triple first, then add new one
+							deleteTriple(addModelTriple, type);
+						} else {		// add triple
+							if (newPre) {
+								if (type == "model") {
+									$("#info_predicate").val($("#edit_predicate").val());
+								} else {
+									$("#info_predicate").val($("#edit_predicate_dropdown").val());
+								}
+								addPredicate(type);
+							} else {
+								addModelTriple();
+							}
+						}
+						
+					}
+				}
+			});
+		}
 	}
 }
 
@@ -499,13 +556,14 @@ function addModelTriple() {
 function addPredicate(type) {
 	var triple;
 	var url = API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=" + type;
-	if ($("#edit_label_predicate_div").is(":visible")) { 	// add new node
+	var object;
+	if ($("#edit_object_predicate").val() == "new_uri") { 	// add new node
 		if (type == "model") {
-			triple = [{ "subject": decodehtml($("#edit_object_predicate").val()), "predicate": "rdfs:subClassOf", "object": decodehtml($("#edit_type_predicate").val())},
-			          { "subject": decodehtml($("#edit_object_predicate").val()), "predicate": "rdfs:label", "object": decodehtml($("#edit_label_predicate").val())}];
+			triple = [{ "subject": decodehtml($("#edit_new_object_predicate").val()), "predicate": "rdfs:subClassOf", "object": decodehtml($("#edit_type_predicate").val())},
+			          { "subject": decodehtml($("#edit_new_object_predicate").val()), "predicate": "rdfs:label", "object": decodehtml($("#edit_label_predicate").val())}];
 		} else {
-			triple = [{ "subject": decodehtml($("#edit_object_predicate").val()), "predicate": "rdf:type", "object": decodehtml($("#edit_type_predicate").val())},
-			          { "subject": decodehtml($("#edit_object_predicate").val()), "predicate": "rdfs:label", "object": decodehtml($("#edit_label_predicate").val())}];
+			triple = [{ "subject": decodehtml($("#edit_new_object_predicate").val()), "predicate": "rdf:type", "object": decodehtml($("#edit_type_predicate").val())},
+			          { "subject": decodehtml($("#edit_new_object_predicate").val()), "predicate": "rdfs:label", "object": decodehtml($("#edit_label_predicate").val())}];
 		}
 		$.ajax({
     	    type: "POST",
@@ -523,18 +581,16 @@ function addPredicate(type) {
     	        alert(errMsg.responseText);
     	    }
     	});
-	}			
-	
-	var object;
-	if ($("#edit_object_predicate").val().indexOf('"') >= 0) {
-		object = $("#edit_object_predicate").val() + "^^" + $("#edit_type_predicate").val();
+		object = decodehtml($("#edit_new_object_predicate").val());
+	} else if ($("#edit_object_predicate").val() == "new_literal") {
+		object = $("#edit_new_object_predicate").val() + "^^" + $("#edit_type_predicate").val();
 	} else {
 		object = decodehtml($("#edit_object_predicate").val());
 	}
 	triple = [{ "subject": decodehtml($("#info_subject").html()), "predicate": decodehtml($("#info_predicate").val()), "object": object}];
 	if (type == "model") {
 		triple.push({ "subject": decodehtml($("#info_predicate").val()), "predicate": "rdfs:domain", "object": decodehtml($("#info_subject").html())},
-	          { "subject": decodehtml($("#info_predicate").val()), "predicate": "rdfs:range", "object": decodehtml($("#edit_object_predicate").val())});
+	          { "subject": decodehtml($("#info_predicate").val()), "predicate": "rdfs:range", "object": object)});
 	}
 	$.ajax({
 	    type: "POST",
@@ -594,6 +650,70 @@ function retrieveOntology() {
 	}
 	$("#contentbar").html("");
 	$("#dialog-form-ontology").dialog( "close" );
+}
+
+function expand(element) {
+	$(element).next().next().toggle("blind", {}, 100 );
+}
+
+function predicateChange() {
+	var query = "SELECT distinct ?object from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { "
+	+ $("#edit_predicate_dropdown").val() + " rdfs:range ?range ."
+	+ "?model rdfs:subClassOf* ?range ."
+	+ "?object a ?model ."
+	+ "}";
+	var url = API_PATH + "/sparql?query=" + encodeURIComponent(query);
+	$.ajax({
+	    type: "GET",
+	    url: url,
+	    headers: {
+			"Authorization": "Basic " + btoa(username + ":" + password)
+		},
+	    success: function(data){
+	    	$("#edit_object_predicate").html("<option value='new_uri'>Add new URI</option><option value='new_literal'>Add new literal</option>");
+	    	$.each(data, function(key, val) {
+				$("#edit_object_predicate").append("<option value='" + getPrefix(val.object) + "'>" + getPrefix(val.object) + "</option>");
+			});		
+	    	$('#edit_object_predicate option:eq(2)').attr('selected', 'selected');
+	    }
+	});
+	
+	var query = "SELECT distinct ?model from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { "
+	+ $("#edit_predicate_dropdown").val() + " rdfs:range ?range ."
+	+ "?model rdfs:subClassOf* ?range ."
+	+ "}";
+	var url = API_PATH + "/sparql?query=" + encodeURIComponent(query);
+	$.ajax({
+	    type: "GET",
+	    url: url,
+	    headers: {
+			"Authorization": "Basic " + btoa(username + ":" + password)
+		},
+	    success: function(data){
+	    	$("#edit_type_predicate").html("");
+	    	$.each(data, function(key, val) {
+				$("#edit_type_predicate").append("<option value='" + getPrefix(val.model) + "'>" + getPrefix(val.model) + "</option>");
+			});		
+	    }
+	});
+}
+
+function objectChange() {
+	$("#edit_new_object_predicate_div").hide();
+	$("#edit_label_predicate_div").hide();
+	$("#edit_type_predicate_div").hide();
+	if ($("#edit_object_predicate").val() == "new_uri") {
+		$("#edit_new_object_predicate_div").show();
+		$("#edit_new_object_predicate_label").html("URI");
+		$("#edit_label_predicate_div").show();
+		$("#edit_type_predicate_div").show();
+		$("#edit_type_predicate_label").html("rdf:type of");
+	} else if ($("#edit_object_predicate").val() == "new_literal") {
+		$("#edit_new_object_predicate_div").show();
+		$("#edit_new_object_predicate_label").html("Literal");
+		$("#edit_type_predicate_div").show();
+		$("#edit_type_predicate_label").html("DataType");
+	}
 }
 
 function printhtml(data) {

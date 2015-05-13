@@ -39,28 +39,35 @@
 		</form>
 	</div>
 	
-	<div id="dialog-form-predicate" title="Add new predicate">
+	<div id="dialog-form" title="">
+		<p id="edit_title"></p>
 		<p class="validateTips"></p>
 
 		<form>
 			<fieldset>
 				<div id="edit_predicate_div">
-					<label for="edit_object">Predicate</label> 
+					<label id="edit_predicate_label" for="edit_object">Predicate</label> 
 					<input type="text" id="edit_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
-					<select id="edit_predicate_dropdown">
+					<select id="edit_predicate_dropdown" onchange="predicateChange();">
 					</select>
 				</div>
 				<div>
-					<label for="edit_object">Object</label> 
-					<input type="text" id="edit_object_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
+					<label for="edit_object">Object</label>
+					<select id="edit_object" onchange="objectChange();">
+					</select>
+				</div>
+				<div id="edit_new_object_predicate_div">
+					<label id="edit_new_object_predicate_label"></label> 
+					<input type="text" id="edit_new_object_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
 				</div>
 				<div id="edit_label_predicate_div">
 					<label for="edit_label">Label</label> 
 					<input type="text" id="edit_label_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
 				</div>
 				<div id="edit_type_predicate_div">
-					<label for="edit_type">Type</label> 
-					<input type="text" id="edit_type_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
+					<label id="edit_type_predicate_label">Type</label> 
+					<select id="edit_type_predicate" onchange="objectChange();">
+					</select>
 				</div>
 				<!-- Allow form submission with keyboard without duplicating the dialog button -->
 				<input type="submit" tabindex="-1"
@@ -165,7 +172,7 @@
 				<% } %>
 				
 				<% if (request.getParameter("instance") != null) { %>
-				    <div id="add_predicate_button"><button onclick='openEditPredicate("", "", true, true, "instance")'>Add New Predicate</button></div>
+				    <div id="add_predicate_button"><button onclick='openEditPredicate("", "", true, true, "instance")'>Add Property</button></div>
 					<iframe id="graphFrame" src="./graph.jsp?url=<%= request.getParameter("instance") %>&type=instance" height="600px" width="1100px"></iframe>
 				<% } else { %>
 					<div id="add_predicate_button"><button onclick='openEditPredicate("", "", true, true, "model")'>Add New Predicate</button></div>
@@ -217,13 +224,21 @@
 			
 		$(function() {
 			initPrefix("main.json");
-			//retrieveProperties("<http://dbtune.org/bbc/peel/session/586>");
+
+			retrieveTree("ns:Dataset");
+			retrieveTree("ns:Feature");
+			retrieveTree("ns:DataProperty");
+			
+			$("#tree_menu").append("<hr>");
+			
+			retrieveTree("ns:Dictionary");
+			
 			<% if (request.getParameter("model") != null) { %>
-				retrieveTree(<%= request.getParameter("dictionary") == null ? "\"ns:Dataset\"" : "\"ns:Dictionary\"" %>, <%= "\"" + request.getParameter("model") + "\"" %>, "model");
-			<% } else if (request.getParameter("instance") != null) { %>
-				retrieveTree(<%= request.getParameter("dictionary") == null ? "\"ns:Dataset\"" : "\"ns:Dictionary\"" %>, <%= "\"" + request.getParameter("instance") + "\"" %>, "instance");
+				retrieveProperties(<%= "\"" + request.getParameter("model") + "\""  %>, "model", <%= request.getParameter("dictionary") != null ? true : false %>);
+				highlight(<%= "\"" + request.getParameter("model") + "\""  %>);
 			<% } else { %>
-				retrieveTree(<%= request.getParameter("dictionary") == null ? "\"ns:Dataset\"" : "\"ns:Dictionary\"" %>);
+				retrieveProperties(<%= "\"" + request.getParameter("instance") + "\"" %>, "instance", <%= request.getParameter("dictionary") != null ? true : false %>);
+				highlight(<%= "\"" + request.getParameter("instance") + "\""  %>);
 			<% } %>
 		});
 
@@ -269,7 +284,7 @@
 			dialog = $("#dialog-form-predicate").dialog({
 				autoOpen : false,
 				height : 350,
-				width : 350,
+				width : 400,
 				modal : true,
 				buttons : {
 					"Edit" : editTriple,
