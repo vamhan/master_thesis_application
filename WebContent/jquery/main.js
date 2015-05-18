@@ -254,78 +254,111 @@ function restart(url, type, endpoint, resource){
 	var nodes = [];
 	var links = [];
 	var literals = [];
-	if (type == "model") {
+	if (type == "metamodel") {
+		var query = "select * from <http://localhost:8890/noon/model> where {" +
+					"?s rdfs:subClassOf* ns:Dictionary }";
 		$.ajax({
 			type: "GET",
-			url: API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=model",
+			url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
 			dataType: 'json',
 			headers: {
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},
-			success: function (data){
-				$.each(data, function(key, val) {
-					var node1 = {name: getPrefix(data[key].subject), uri: data[key].subject, type: "uri", scope:"model"};
-					var node2 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope:"model"};
-					if (!containsObject(node1, nodes)) {
-						nodes.push(node1);
+			success: function (dicsub){
+				var query2 = "select * from <http://localhost:8890/noon/model> where {" +
+								"?subject ?predicate ?object " +
+								"filter not exists {";
+				$.each(dicsub, function(key1, val1) {
+					query2 += "{" + val1.s + " ?predicate ?object filter (?predicate != <http://www.w3.org/2000/01/rdf-schema#subClassOf>)}";
+					if (key1 != dicsub.length - 1) {
+						query2 += "union";
 					}
-					if (!containsObject(node2, nodes)) {
-						nodes.push(node2);
-					}
-					var source = 0;
-					var target = 0;
-					$.each(nodes, function(key2, val2) {
-						if (nodes[key2].uri === node1.uri) {
-							source = key2;
-						}
-						if (nodes[key2].uri === node2.uri) {
-							target = key2;
-						}
-					});
-					links.push({"source": source,"target": target, "name":getPrefix(data[key].predicate), "value":10});
 				});
+				query2 += "} filter (?predicate != <http://www.w3.org/2000/01/rdf-schema#label> && ?predicate != <http://www.w3.org/2000/01/rdf-schema#comment> && ?predicate != <http://www.w3.org/2000/01/rdf-schema#domain> && ?predicate != <http://www.w3.org/2000/01/rdf-schema#range>)}";
 				$.ajax({
 					type: "GET",
-					url: API_PATH + "/types/ns:Dataset/instances?repo_name=" + REPO_NAME + "&level=model",
+					url: API_PATH + "/sparql?query=" + encodeURIComponent(query2),
 					dataType: 'json',
 					headers: {
 						"Authorization": "Basic " + btoa(username + ":" + password)
 					},
 					success: function (data){
 						$.each(data, function(key, val) {
-							var node1 = {name: getPrefix(data[key].instance), uri: data[key].instance, type: "uri", scope:"instance"};
-							if (!containsObject(node1, nodes)) {
-								nodes.push(node1);
+							if (getPrefix(data[key].predicate) != "rdfs:label" && getPrefix(data[key].predicate) != "rdfs:comment" && getPrefix(data[key].predicate) != "rdfs:domain" && getPrefix(data[key].predicate) != "rdfs:range") {
+								var node1 = {name: getPrefix(data[key].subject), uri: data[key].subject, type: "uri", scope:"model"};
+								var node2 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope:"model"};
+								if (!containsObject(node1, nodes)) {
+									nodes.push(node1);
+								}
+								if (!containsObject(node2, nodes)) {
+									nodes.push(node2);
+								}
+								var source = 0;
+								var target = 0;
+								$.each(nodes, function(key2, val2) {
+									if (nodes[key2].uri === node1.uri) {
+										source = key2;
+									}
+									if (nodes[key2].uri === node2.uri) {
+										target = key2;
+									}
+								});
+								links.push({"source": source,"target": target, "name":getPrefix(data[key].predicate), "value":10});
 							}
-							var source = 0;
-							var target = 0;
-							$.each(nodes, function(key2, val2) {
-								if (nodes[key2].uri === node1.uri) {
-									source = key2;
-								}
-								if (nodes[key2].uri === data[key].type) {
-									target = key2;
-								}
-							});
-							links.push({"source": source,"target": target, "name":"rdf:type", "value":10});
 						});
 						init({"nodes": nodes, "links": links, "literals": literals});
+						/*$.ajax({
+							type: "GET",
+							url: API_PATH + "/types/ns:Dataset/instances?repo_name=" + REPO_NAME + "&level=model",
+							dataType: 'json',
+							headers: {
+								"Authorization": "Basic " + btoa(username + ":" + password)
+							},
+							success: function (data){
+								$.each(data, function(key, val) {
+									var node1 = {name: getPrefix(data[key].instance), uri: data[key].instance, type: "uri", scope:"instance"};
+									if (!containsObject(node1, nodes)) {
+										nodes.push(node1);
+									}
+									var source = 0;
+									var target = 0;
+									$.each(nodes, function(key2, val2) {
+										if (nodes[key2].uri === node1.uri) {
+											source = key2;
+										}
+										if (nodes[key2].uri === data[key].type) {
+											target = key2;
+										}
+									});
+									links.push({"source": source,"target": target, "name":"rdf:type", "value":10});
+								});
+								init({"nodes": nodes, "links": links, "literals": literals});
+							}
+						});*/
 					}
 				});
 			}
 		});
-	} else if (type == "instance") {
+	} else if (type == "model" || type == "instance") {
 		$.ajax({
 			type: "GET",
-			url: API_PATH + "/instances/" + url + "/properties?repo_name=" + REPO_NAME + "&level=instance",
+			url: API_PATH + "/instances/" + url + "/properties?repo_name=" + REPO_NAME + "&level=" + type,
 			dataType: 'json',
 			headers: {
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},
 			success: function (data){
-				nodes.push({name: url, uri: url, type: "uri", scope:"instance", color:"#8000FF"})
+				nodes.push({name: url, uri: url, type: "uri", scope:"instance", color:"#8000FF"});
+				var modelNodes = [];
 				$.each(data, function(key, val) {
-					var node1 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope:"instance"};
+					var scope
+					if (getPrefix(data[key].predicate) == "rdf:type") {
+						modelNodes.push(getPrefix(data[key].object));
+						scope = "model";
+					} else {
+						scope = type;
+					}
+					var node1 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope:(data[key].object.indexOf("<") == 0 ? scope : "literals")};
 					if (!containsObject(node1, nodes)) {
 						nodes.push(node1);
 					}
@@ -347,8 +380,16 @@ function restart(url, type, endpoint, resource){
 					},
 					success: function (data){
 						$.each(data, function(key, val) {
-							var node1 = {name: getPrefix(data[key].subject), uri: data[key].subject, type: "uri", scope:"instance"};
-							var node2 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope: (data[key].object.indexOf("<") == 0 ? "instance" : "literals")};
+							var scope;
+							if (getPrefix(data[key].predicate) == "rdf:type") {
+								scope = "model";
+							} else if (modelNodes.indexOf(getPrefix(data[key].subject)) >= 0) {
+								scope = "model";
+							} else {
+								scope = type;
+							}
+							var node1 = {name: getPrefix(data[key].subject), uri: data[key].subject, type: "uri", scope:scope};
+							var node2 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope: (data[key].object.indexOf("<") == 0 ? scope : "literals")};
 							if (!containsObject(node1, nodes)) {
 								nodes.push(node1);
 							}
@@ -397,7 +438,7 @@ function restart(url, type, endpoint, resource){
 				}
 				$.each(data, function(key, val) {
 					var node1 = {name: getPrefix(data[key].subject), uri: data[key].subject, type: "uri", scope:"model"};
-					node2 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope:"model"};
+					var node2 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope:"model"};
 					if (!containsObject(node1, nodes)) {
 						nodes.push(node1);
 					}
@@ -417,7 +458,76 @@ function restart(url, type, endpoint, resource){
 					links.push({"source": source,"target": target, "name":getPrefix(data[key].predicate), "value":10});
 				});
 				init({"nodes": nodes, "links": links, "literals": literals});
+				$("#load_" + type + "_button").append(" into " + url);
 				$("#load_" + type + "_button_div").show();
+			}
+		});
+	} else if (type == "lineage") {
+		var query = "select * from <" + REPO_NAME + "/instance> where {" +
+		"?op <http://rdfs.org/sioc/ns#produces> ?produce ." +
+		"?op <http://rdfs.org/sioc/ns#uses> ?use }";
+		
+		$.ajax({
+			type: "GET",
+			url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+			dataType: 'json',
+			cache:false,
+			headers: {
+				"Authorization": "Basic " + btoa(username + ":" + password)
+			},
+			success: function (data){
+				var query = "select * from <" + REPO_NAME + "/instance> where {" +
+					"?d <http://rdfs.org/sioc/ns#hasFeature> ?f" +
+					"}";
+			
+				$.ajax({
+					type: "GET",
+					url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+					dataType: 'json',
+					cache:false,
+					headers: {
+						"Authorization": "Basic " + btoa(username + ":" + password)
+					},
+					success: function (data2){
+						var container = [];
+						prepareLineage(data, url, container, data2);
+						$.each(container, function(key, val) {
+							var node1 = {name: getPrefix(container[key].use), uri: container[key].use, type: "uri", scope:"model"};
+							var node2 = {name: getPrefix(container[key].op), uri: container[key].op, type: "uri", scope:"model"};
+							var node3 = {name: getPrefix(container[key].produce), uri: container[key].produce, type: "uri", scope:"model"};
+							if (!containsObject(node1, nodes)) {
+								nodes.push(node1);
+							}
+							if (!containsObject(node2, nodes)) {
+								nodes.push(node2);
+							}
+							if (!containsObject(node3, nodes)) {
+								nodes.push(node3);
+							}
+							var source = 0;
+							var op = 0;
+							var des = 0;
+							$.each(nodes, function(key2, val2) {
+								if (nodes[key2].name === node1.name) {
+									source = key2;
+								}
+								if (nodes[key2].name === node2.name) {
+									op = key2;
+								}
+								if (nodes[key2].name === node3.name) {
+									des = key2;
+								}
+							});
+							if (container[key].op == "hasFeature") {
+								links.push({"source": source,"target": des, "name":"hasFeature", "value":10});
+							} else {
+								links.push({"source": source,"target": op, "name":"input", "value":10});
+								links.push({"source": op,"target": des, "name":"output", "value":10});
+							}
+						});
+						init({"nodes": nodes, "links": links, "literals": literals});
+					}
+				});
 			}
 		});
 	}
@@ -446,10 +556,47 @@ function restart(url, type, endpoint, resource){
 	});*/
 }
 
+function prepareLineage(data, node, container, DFRelation) {
+	$.each(data, function(key, val) {
+		if (getPrefix(val.produce) == getPrefix(node)) {
+			container.push(val);
+			prepareLineage(data, val.use, container, DFRelation);
+		}
+	});
+	$.each(DFRelation, function(key2, val2) {
+		if (getPrefix(val2.f) == getPrefix(node)) {
+			var dexist = false;
+			for (var i = 0; i < container.length; i++) {
+		        if (getPrefix(container[i].use) === getPrefix(val2.d)) {
+		            dexist = true;
+		        }
+		    }
+			if (!dexist) {
+				container.push({"op":"hasFeature", "use":val2.d, "produce":node})
+				prepareLineage(data, val2.d, container, DFRelation);
+			}
+		}
+	});
+	$.each(DFRelation, function(key2, val2) {
+		if (getPrefix(val2.d) == getPrefix(node)) {
+			var dexist = false;
+			for (var i = 0; i < container.length; i++) {
+		        if (getPrefix(container[i].produce) === getPrefix(val2.f)) {
+		            dexist = true;
+		        }
+		    }
+			if (!dexist) {
+				container.push({"op":"hasFeature", "use":node, "produce":val2.f})
+				prepareLineage(data, val2.f, container, DFRelation);
+			}
+		}
+	});
+}
+
 function containsObject(obj, list) {
     var i;
     for (i = 0; i < list.length; i++) {
-        if (list[i].uri === obj.uri) {
+        if (list[i].name === obj.name) {
             return true;
         }
     }

@@ -93,10 +93,10 @@ $(".close").on('click', function(){
   </table>
 </div>
 <div id="load_ontology_button_div" style="display: none">
-	<button onclick='loadOntology("model")'>Load This Ontology</button>
+	<button id="load_ontology_button" onclick='loadOntology("model")'>Load This Ontology</button>
 </div>
 <div id="load_resource_button_div" style="display: none">
-	<button onclick='loadOntology("instance")'>Load This Resource</button>
+	<button id="load_resource_button" onclick='loadOntology("instance")'>Load This Resource</button>
 </div>
 </body>
 </html>

@@ -1,4 +1,4 @@
-
+<%@ page import="java.util.Arrays" %>
 <!DOCTYPE html>
 <!-- Template by html.am -->
 <html>
@@ -13,31 +13,11 @@
 	src="jquery/jquery-ui-1.8.20.custom.min.js"></script>
 <script type="text/javascript" src="jquery/config.js"></script>
 <script type="text/javascript" src="jquery/treeExploration.js"></script>
+<% 
+	String[] nodes = {"ns:Dataset", "ns:Feature", "ns:DataProperty", "ns:Operation", "ns:MiningModel", "ns:Dictionary"};
+%>
 </head>
 <body>
-	<div id="dialog-form" title="Edit Triple">
-		<p class="validateTips"></p>
-
-		<form>
-			<fieldset>
-				<div>
-					<label for="edit_object">Object</label> 
-					<input type="text" id="edit_object" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
-				</div>
-				<div id="edit_label_div">
-					<label for="edit_label">Label</label> 
-					<input type="text" id="edit_label" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
-				</div>
-				<div id="edit_type_div">
-					<label for="edit_label">Type</label> 
-					<input type="text" id="edit_type" value="xsd:string" class="text ui-widget-content ui-corner-all" style="width: 100%">
-				</div>
-				<!-- Allow form submission with keyboard without duplicating the dialog button -->
-				<input type="submit" tabindex="-1"
-					style="position: absolute; top: -1000px">
-			</fieldset>
-		</form>
-	</div>
 	
 	<div id="dialog-form" title="">
 		<p id="edit_title"></p>
@@ -48,25 +28,25 @@
 				<div id="edit_predicate_div">
 					<label id="edit_predicate_label" for="edit_object">Predicate</label> 
 					<input type="text" id="edit_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
-					<select id="edit_predicate_dropdown" onchange="predicateChange();">
+					<select id="edit_predicate_dropdown" onchange="prepareObjectDropdown($(this).val())">
 					</select>
 				</div>
 				<div>
 					<label for="edit_object">Object</label>
-					<select id="edit_object" onchange="objectChange();">
+					<select id="edit_object">
 					</select>
 				</div>
-				<div id="edit_new_object_predicate_div">
-					<label id="edit_new_object_predicate_label"></label> 
-					<input type="text" id="edit_new_object_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
+				<div id="edit_new_object_div">
+					<label id="edit_new_object_label"></label> 
+					<input type="text" id="edit_new_object" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
 				</div>
-				<div id="edit_label_predicate_div">
+				<div id="edit_label_div">
 					<label for="edit_label">Label</label> 
-					<input type="text" id="edit_label_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
+					<input type="text" id="edit_label" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
 				</div>
-				<div id="edit_type_predicate_div">
-					<label id="edit_type_predicate_label">Type</label> 
-					<select id="edit_type_predicate" onchange="objectChange();">
+				<div id="edit_type_div">
+					<label id="edit_type_label">Type</label> 
+					<select id="edit_type" onchange="objectChange();">
 					</select>
 				</div>
 				<!-- Allow form submission with keyboard without duplicating the dialog button -->
@@ -77,6 +57,7 @@
 	</div>
 	
 	<div id="dialog-form-model" title="Edit Model">
+		<p id="edit_model_title"></p>
 		<p class="validateTips"></p>
 
 		<form>
@@ -100,7 +81,8 @@
 	  <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>This triple will be permanently deleted and cannot be recovered. Are you sure?</p>
 	</div>
 	
-	<div id="dialog-form-ontology" title="Load Ontology">
+	<div id="dialog-form-ontology" title="View External Ontology">
+		<p id="load_ontology_title"></p>
 		<p class="validateTips"></p>
 
 		<form>
@@ -137,10 +119,10 @@
 				</div>
 				<div id="top-nav">
 					<ul>
-						<li><a href="./">Main</a></li>
-						<li><a href="./?dictionary=">Dictionary</a></li>
-						<li><a href="#">FAQ</a></li>
-						<li><a href="#">Help</a></li>
+						<li><a href="./?model=ns:Dataset">Main</a></li>
+						<li><a href="./?metamodel">View Model</a></li>
+						<li><a href="http://localhost:8890/sparql-auth">Sparql Endpoint</a></li>
+						<li><a href="#">Login</a></li>
 					</ul>
 				</div>
 				<div class="clr"></div>
@@ -160,11 +142,19 @@
 					<div class="widget" id="tree_menu"></div>
 				</nav>
 				
-				<main id="contentbar"></main>
+				<% if (request.getParameter("model") != null) { %>
+					<h1>Model Level</h1>
+					<h2 id='info_subject'><%= request.getParameter("model") %></h2>
+				<% } else if (request.getParameter("instance") != null) { %>
+					<h1>Instance Level</h1>
+					<h2 id='info_subject'><%= request.getParameter("instance") %></h2>
+				<% } %>
+				
+				<main id="contentbar">
 				<% if (request.getParameter("model") != null) { %>
 					<div id="add_instance_button"><button onclick='openEditModelPopup(true)'>Add New Instance</button></div>
 					<div id="add_subclass_button"><button onclick='openEditModelPopup(false)'>Add Subclass</button></div>
-					<% if (request.getParameter("dictionary") != null) { %>
+					<% if (request.getParameter("model").equals("ns:Dictionary")) { %>
 	
 						<div id="load_ontology_button"><button onclick='openLoadOntologyPopup(true)'>View External Ontology</button></div>
 						<div id="load_resource_button"><button onclick='openLoadOntologyPopup(false)'>View External Resource</button></div>
@@ -172,11 +162,21 @@
 				<% } %>
 				
 				<% if (request.getParameter("instance") != null) { %>
-				    <div id="add_predicate_button"><button onclick='openEditPredicate("", "", true, true, "instance")'>Add Property</button></div>
+				    <div id="add_predicate_button"><button onclick='openEditPopup("", "", true, "instance")'>Add Property</button></div>
+				<% } else if (request.getParameter("model") != null){
+					if (!Arrays.asList(nodes).contains(request.getParameter("model"))) {
+					%>
+					<div id="add_predicate_button"><button onclick='openEditPopup("", "", true, "model")'>Add New Predicate</button></div>
+					<% } %>
+				<% } %>
+				</main>
+				
+				<% if (request.getParameter("instance") != null) { %>
 					<iframe id="graphFrame" src="./graph.jsp?url=<%= request.getParameter("instance") %>&type=instance" height="600px" width="1100px"></iframe>
-				<% } else { %>
-					<div id="add_predicate_button"><button onclick='openEditPredicate("", "", true, true, "model")'>Add New Predicate</button></div>
+				<% } else if (request.getParameter("model") != null){ %>
 					<iframe id="graphFrame" src="./graph.jsp?url=<%= request.getParameter("model") %>&type=model" height="600px" width="1100px"></iframe>
+				<% } else if (request.getParameter("metamodel") != null) { %>
+					<iframe id="graphFrame" src="./graph.jsp?url=&type=metamodel" height="600px" width="1100px"></iframe>
 				<% } %>
 
 				<div class="clr"></div>
@@ -225,78 +225,39 @@
 		$(function() {
 			initPrefix("main.json");
 
-			retrieveTree("ns:Dataset");
-			retrieveTree("ns:Feature");
-			retrieveTree("ns:DataProperty");
+			<% for (int i = 0; i < nodes.length - 1; i++) { %>
+				retrieveTree(<%= "\"" + nodes[i] + "\"" %>);
+			<% } %>
 			
 			$("#tree_menu").append("<hr>");
 			
 			retrieveTree("ns:Dictionary");
 			
 			<% if (request.getParameter("model") != null) { %>
-				retrieveProperties(<%= "\"" + request.getParameter("model") + "\""  %>, "model", <%= request.getParameter("dictionary") != null ? true : false %>);
+				retrieveProperties(<%= "\"" + request.getParameter("model") + "\""  %>, "model", <%= request.getParameter("dictionary") != null ? true : false %>, <%= Arrays.asList(nodes).contains(request.getParameter("model")) ? true : false %>);
 				highlight(<%= "\"" + request.getParameter("model") + "\""  %>);
-			<% } else { %>
+			<% } else if (request.getParameter("instance") != null) { %>
 				retrieveProperties(<%= "\"" + request.getParameter("instance") + "\"" %>, "instance", <%= request.getParameter("dictionary") != null ? true : false %>);
 				highlight(<%= "\"" + request.getParameter("instance") + "\""  %>);
 			<% } %>
 		});
-
-		// edit triple popup
+		
 		$(function() {
 			var dialog, form;
-
-			$("#edit_label_div").hide();
-			$("#edit_type_div").hide();
 
 			dialog = $("#dialog-form").dialog({
 				autoOpen : false,
-				height : 350,
-				width : 350,
-				modal : true,
-				buttons : {
-					"Edit" : editTriple,
-					Cancel : function() {
-						dialog.dialog("close");
-					}
-				},
-				close : function() {
-					$(".validateTips").html("");
-					$("#edit_label_div").hide();
-					$("#edit_type_div").hide();
-				}
-			});
-
-			form = dialog.find("form").on("submit", function(event) {
-				event.preventDefault();
-				editTriple();
-			});
-		});
-		
-		// add new predicate
-		$(function() {
-			var dialog, form;
-
-			$("#edit_label_predicate_div").hide();
-			$("#edit_type_predicate_div").hide();
-			$("#edit_predicate_div").hide();
-
-			dialog = $("#dialog-form-predicate").dialog({
-				autoOpen : false,
-				height : 350,
+				height : 400,
 				width : 400,
 				modal : true,
 				buttons : {
-					"Edit" : editTriple,
+					"Edit" : addTriple,
 					Cancel : function() {
 						dialog.dialog("close");
 					}
 				},
 				close : function() {
 					$(".validateTips").html("");
-					$("#edit_label_predicate_div").hide();
-					$("#edit_type_predicate_div").hide();
-					$("#edit_predicate_div").hide();
 				}
 			});
 
@@ -317,7 +278,7 @@
 				modal : true,
 				buttons : {
 					"Add" : function() {
-						editModel()
+						editModel();
 					},
 					Cancel : function() {
 						dialog.dialog("close");
