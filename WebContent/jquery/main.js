@@ -348,7 +348,7 @@ function restart(url, type, endpoint, resource){
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},
 			success: function (data){
-				nodes.push({name: url, uri: url, type: "uri", scope:"instance", color:"#8000FF"});
+				nodes.push({name: url, uri: url, type: "uri", scope:type, color:"#8000FF"});
 				var modelNodes = [];
 				$.each(data, function(key, val) {
 					var scope
@@ -414,11 +414,12 @@ function restart(url, type, endpoint, resource){
 			}
 		});
 	} else if (type == "ontology" || type == "resource") {
+		
 		var urlS;
 		if (type == "ontology") {
 			urlS = API_PATH + "/ontology/?endpointURL=" + endpoint + "&ontology=" + ontology;
 		} else {
-			urlS = API_PATH + "/ontology/resources/?endpointURL=" + endpoint + "&ontology=" + ontology + "&resource=" + resource;
+			urlS = API_PATH + "/ontology/resources/?endpointURL=" + endpoint + "&resource=" + resource;
 		}
 		
 		$.ajax({
@@ -432,9 +433,11 @@ function restart(url, type, endpoint, resource){
 			success: function (data){
 				ontologyData = data;
 				if (type == "ontology") {
-					ontologyData.push({ "subject": "<" + ontology + ">", "predicate": "rdfs:subClassOf", "object": url});
+					if (url.length != 0){
+						ontologyData.push({ "subject": ontology, "predicate": "rdfs:subClassOf", "object": url});
+					}
 				} else {
-					ontologyData.push({ "subject": "<" + resource + ">", "predicate": "rdf:type", "object": url});
+					ontologyData.push({ "subject": resource, "predicate": "rdf:type", "object": url});
 				}
 				$.each(data, function(key, val) {
 					var node1 = {name: getPrefix(data[key].subject), uri: data[key].subject, type: "uri", scope:"model"};
@@ -528,6 +531,43 @@ function restart(url, type, endpoint, resource){
 						init({"nodes": nodes, "links": links, "literals": literals});
 					}
 				});
+			}
+		});
+	} else if (type == "usage") {
+		var query = "select * from <" + REPO_NAME + "/instance> where {" +
+		"?subject ns:hasDomainConcept " + url + "}";
+		
+		$.ajax({
+			type: "GET",
+			url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+			dataType: 'json',
+			cache:false,
+			headers: {
+				"Authorization": "Basic " + btoa(username + ":" + password)
+			},
+			success: function (data){
+				$.each(data, function(key, val) {
+					var node1 = {name: getPrefix(val.subject), uri: val.subject, type: "uri", scope:"model"};
+					var node2 = {name: getPrefix(url), uri: url, type: "uri", scope:"model"};
+					if (!containsObject(node1, nodes)) {
+						nodes.push(node1);
+					}
+					if (!containsObject(node2, nodes)) {
+						nodes.push(node2);
+					}
+					var source = 0;
+					var target = 0;
+					$.each(nodes, function(key2, val2) {
+						if (nodes[key2].name === node1.name) {
+							source = key2;
+						}
+						if (nodes[key2].name === node2.name) {
+							target = key2;
+						}
+					});
+					links.push({"source": source,"target": target, "name":"hasDomainConcept", "value":10});
+				});
+				init({"nodes": nodes, "links": links, "literals": literals});
 			}
 		});
 	}
@@ -667,7 +707,48 @@ function editNode(uri, scope) {
 }
 
 function loadOntology(level) {
-	var url = API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=" + level;
+	
+	if (level == "model") {
+		var query = "select * from <" + REPO_NAME + "/model> where {" +
+		"?subject rdfs:subClassOf ns:Dictionary}";
+		
+		$.ajax({
+			type: "GET",
+			url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+			dataType: 'json',
+			async:false,
+			cache:false,
+			headers: {
+				"Authorization": "Basic " + btoa(username + ":" + password)
+			},
+			success: function (data){
+				$.each(ontologyData, function(key, val) {
+					$.each(data, function(key2, val2) {
+						if (getPrefix(val.subject) == getPrefix(val2.subject)) {
+							old_triple = [{ "subject": val2.subject, "predicate": "rdfs:subClassOf", "object": "ns:Dictionary"}];
+							var url = API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=" + level;
+							$.ajax({
+							    type: "DELETE",
+							    url: url,
+							    headers: {
+									"Authorization": "Basic " + btoa(username + ":" + password)
+								},
+							    data: JSON.stringify(old_triple),
+							    contentType: "application/json; charset=utf-8",
+							    success: function(data){
+							    },
+							    error: function(errMsg) {
+							    	alert(errMsg.responseText);
+							    }
+							});
+						}
+					});
+				});
+			}
+		});
+	}
+	
+	var url = API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=" + level + "&notCheckValid=true";
 	$.ajax({
 	    type: "POST",
 	    url: url,

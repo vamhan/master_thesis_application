@@ -124,27 +124,46 @@ function retrieveProperties(instance, type, isDic, isMeta) {
 			"Authorization": "Basic " + btoa(username + ":" + password)
 		},
 		success: function (data){
-			$.each(data, function(key, val) {
-				if (type == "instance" && getPrefix(data[key].predicate) == "rdf:type") {
-					$.ajax({
-						type: "GET",
-						url: API_PATH + "/types/ns:Passive/hierarchy?repo_name=" + REPO_NAME,
-						dataType: 'json',
-						async:false,
-						cache:false,
-						headers: {
-							"Authorization": "Basic " + btoa(username + ":" + password)
-						},
-						success: function (data2){
-							$.each(data2, function(key2, val2) {
-								if (data2[key2].class == data[key].object) {
-									$("#contentbar").append("<div id='data_lineage_button'><button onclick='lineage(false)'>View Data Lineage</button></div>");
-								}
-							});	
-						}
-					});
+			if (type == "instance") {
+				var hasType = false;
+				$.each(data, function(key, val) {
+					if (getPrefix(data[key].predicate) == "rdf:type") {
+						hasType = true;
+						$.ajax({
+							type: "GET",
+							url: API_PATH + "/types/ns:Passive/hierarchy?repo_name=" + REPO_NAME,
+							dataType: 'json',
+							async:false,
+							cache:false,
+							headers: {
+								"Authorization": "Basic " + btoa(username + ":" + password)
+							},
+							success: function (data2){
+								$.each(data2, function(key2, val2) {
+									if (data2[key2].class == data[key].object) {
+										$("#contentbar").append("<div id='data_lineage_button'><button onclick='lineage(false)'>View Data Lineage</button></div>");
+									}
+								});	
+							}
+						});
+					}
+				});
+				if (!hasType) {
+					$("#contentbar").append("<div style='color:red'>This resource hasn't been loaded into the repository yet</div>");
+					$("#contentbar").append("<div id='load_resource_button'><button onclick='openLoadOntologyPopup(false, \"" + $("#info_subject").html() + "\")'>View This Resource</button></div>");
 				}
-			});
+			} else {
+				var hasType = false;
+				$.each(data, function(key, val) {
+					if (getPrefix(data[key].predicate) == "rdfs:subClassOf") {
+						hasType = true;
+					}
+				});
+				if (!hasType) {
+					$("#contentbar").append("<div style='color:red'>This concept hasn't been loaded into the repository yet</div>");
+					$("#contentbar").append("<div id='load_ontology_button'><button onclick='openLoadOntologyPopup(true, \"" + $("#info_subject").html() + "\")'>View This Ontology</button></div>");
+				}
+			}
 			$.each(data, function(key, val) {
 				var predicate = getPrefix(data[key].predicate);
 				if ($("[name=property_header]:contains('" + predicate + "')").length == 0) {
@@ -288,13 +307,23 @@ function openEditModelPopup(isIns) {
 	);
 }
 
-function openLoadOntologyPopup(isOntology) {
+function openLoadOntologyPopup(isOntology, url) {
+	$("#typeof_div").hide();
 	if (!isOntology) {
 		$("#dialog-form-ontology").dialog("option", "title", "View External Resource");
 		$("#resource_div").show();
+		$("#ontology_div").hide();
+		if (url != null) {
+			$("#resource").val(url);
+			$("#typeof_div").show();
+		}
 	} else {
 		$("#dialog-form-ontology").dialog("option", "title", "View External Ontology");
 		$("#resource_div").hide();
+		$("#ontology_div").show();
+		if (url != null) {
+			$("#ontology").val(url);
+		}
 	}
 	$( "#dialog-form-ontology" ).dialog( "open" );
 }
@@ -462,9 +491,17 @@ function editModel(isIns) {
 
 function retrieveOntology() {
 	if (!$("#resource_div").is(":visible")) {
-		$("#graphFrame").attr("src", "./graph.jsp?url=" + $("#info_subject").html() + "&ontology=" + $("#ontology").val() + "&type=ontology&endpoint=" + $("#endpoint").val());
+		if ($("#info_subject").html() != $("#ontology").val()) {
+			$("#graphFrame").attr("src", "./graph.jsp?url=" + $("#info_subject").html() + "&ontology=" + decodehtml($("#ontology").val()) + "&type=ontology&endpoint=" + $("#endpoint").val());
+		} else {
+			$("#graphFrame").attr("src", "./graph.jsp?url=ns:Dictionary&ontology=" + decodehtml($("#ontology").val()) + "&type=ontology&endpoint=" + $("#endpoint").val());
+		}
 	} else {
-		$("#graphFrame").attr("src", "./graph.jsp?url=" + $("#info_subject").html() + "&ontology=" + $("#ontology").val() + "&type=resource&endpoint=" + $("#endpoint").val() + "&resource=" + $("#resource").val());
+		if (!$("#typeof_div").is(":visible")) {
+			$("#graphFrame").attr("src", "./graph.jsp?url=" + $("#info_subject").html() + "&type=resource&endpoint=" + $("#endpoint").val() + "&resource=" + decodehtml($("#resource").val()));
+		} else {
+			$("#graphFrame").attr("src", "./graph.jsp?url=" + $("#typeof").val() + "&type=resource&endpoint=" + $("#endpoint").val() + "&resource=" + decodehtml($("#resource").val()));
+		}
 	}
 	$("#contentbar").html("");
 	$("#dialog-form-ontology").dialog( "close" );
@@ -577,6 +614,30 @@ function objectChange(type) {
 
 function lineage() {
 	$("#graphFrame").attr("src", "./graph.jsp?url=" + $("#info_subject").html() + "&type=lineage");
+}
+
+function viewSamanticUsage() {
+	$("#graphFrame").attr("src", "./graph.jsp?url=" + $("#info_subject").html() + "&type=usage");
+}
+
+function importFile(type) {
+	var fd = new FormData(document.getElementById("import_form"));
+	$.ajax({
+		url : API_PATH + "/import?repo_name=" + REPO_NAME + "&level=" + type,
+		type : "POST",
+		headers : {
+			"Authorization" : "Basic " + btoa(username + ":" + password)
+		},
+		data : fd,
+		processData : false, // tell jQuery not to process the data
+		contentType : false, // tell jQuery not to set contentType
+		success : function(data) {
+			location.reload();
+		},
+		error : function(errMsg) {
+			alert(errMsg.responseText);
+		}
+	});
 }
 
 function validateField(element) {

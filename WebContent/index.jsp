@@ -91,13 +91,17 @@
 					<label for="edit_object">Endpoint URL</label> 
 					<input type="text" id="endpoint" value="http://dbpedia.org/sparql" class="text ui-widget-content ui-corner-all" style="width: 100%">
 				</div>
-				<div>
+				<div id="ontology_div">
 					<label for="edit_label">Ontology URL</label> 
-					<input type="text" id="ontology" value="http://dbpedia.org/ontology/PopulatedPlace" class="text ui-widget-content ui-corner-all" style="width: 100%">
+					<input type="text" id="ontology" value="&lt;http://dbpedia.org/ontology/PopulatedPlace&gt;" class="text ui-widget-content ui-corner-all" style="width: 100%">
 				</div>
 				<div id="resource_div">
 					<label for="edit_label">Resource URL</label> 
-					<input type="text" id="resource" value="http://dbpedia.org/resource/Barcelona" class="text ui-widget-content ui-corner-all" style="width: 100%">
+					<input type="text" id="resource" value="&lt;http://dbpedia.org/resource/Barcelona&gt;" class="text ui-widget-content ui-corner-all" style="width: 100%">
+				</div>
+				<div id="typeof_div">
+					<label for="edit_label">rdf:type of</label> 
+					<input type="text" id="typeof" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
 				</div>
 				<!-- Allow form submission with keyboard without duplicating the dialog button -->
 				<input type="submit" tabindex="-1"
@@ -105,6 +109,10 @@
 			</fieldset>
 		</form>
 	</div>
+	
+	<form id="import_form" method="POST" enctype="multipart/form-data" action="./import" style="display:none">
+		<input id="import_file" type="file" name="file">
+	</form>
 	
 	<input id="info_predicate" style="display: none" /> 
 	<input id="old_object" style="display: none" />
@@ -121,6 +129,8 @@
 					<ul>
 						<li><a href="./?model=ns:Dataset">Main</a></li>
 						<li><a href="./?metamodel">View Model</a></li>
+						<li><a href="#" id="import_model">Import Model</a></li>
+						<li><a href="#" id="import_instance">Import Instance</a></li>
 						<li><a href="http://localhost:8890/sparql-auth">Sparql Endpoint</a></li>
 						<li><a href="#">Login</a></li>
 					</ul>
@@ -154,14 +164,15 @@
 				<% if (request.getParameter("model") != null) { %>
 					<div id="add_instance_button"><button onclick='openEditModelPopup(true)'>Add New Instance</button></div>
 					<div id="add_subclass_button"><button onclick='openEditModelPopup(false)'>Add Subclass</button></div>
-					<% if (request.getParameter("model").equals("ns:Dictionary")) { %>
-	
+					<% if (request.getParameter("dictionary") != null) { %>
 						<div id="load_ontology_button"><button onclick='openLoadOntologyPopup(true)'>View External Ontology</button></div>
 						<div id="load_resource_button"><button onclick='openLoadOntologyPopup(false)'>View External Resource</button></div>
-					<% } %>
-				<% } %>
+				<% }} %>
 				
-				<% if (request.getParameter("instance") != null) { %>
+				<% if (request.getParameter("instance") != null) {
+					if (request.getParameter("dictionary") != null) {%>
+						<div id="samantic_usage_button"><button onclick='viewSamanticUsage()'>View Samantic Usage</button></div>
+					<% } %>
 				    <div id="add_predicate_button"><button onclick='openEditPopup("", "", true, "instance")'>Add Property</button></div>
 				<% } else if (request.getParameter("model") != null){
 					if (!Arrays.asList(nodes).contains(request.getParameter("model"))) {
@@ -240,6 +251,21 @@
 				retrieveProperties(<%= "\"" + request.getParameter("instance") + "\"" %>, "instance", <%= request.getParameter("dictionary") != null ? true : false %>);
 				highlight(<%= "\"" + request.getParameter("instance") + "\""  %>);
 			<% } %>
+			
+			$("#import_model").on('click', function(e){
+		        e.preventDefault();
+		        $("#import_file").change(function(){
+		        	importFile("model");
+		    	});
+		        $("#import_file").trigger('click');
+		    });
+		    $("#import_instance").on('click', function(e){
+		        e.preventDefault();
+		        $("#import_file").change(function(){
+		        	importFile("instance");
+		    	});
+		        $("#import_file").trigger('click');
+		    });
 		});
 		
 		$(function() {
