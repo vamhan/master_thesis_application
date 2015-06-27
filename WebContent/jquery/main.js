@@ -1,22 +1,46 @@
-var REPO_NAME = "http://localhost:8890/noon";
+//var REPO_NAME = "http://localhost:8890/noon";
 var username = "dba";
 var password = "dba";
 var prefix;
 var ontologyData;
-var dicNS = "ns:Dictionary";
-var w = document.getElementById("chart").offsetWidth-2,
-h = document.getElementById("chart").offsetHeight;
+var dicNS = "dm:Dictionary";
+var stringPrefix = "";
+var w = 1200;//document.getElementById("chart").offsetWidth-2,
+h = 700;//document.getElementById("chart").offsetHeight;
 
-function initPrefix(filename) {
+function loadPrefix() {
 	$.ajax({
 		type: "GET",
-		url: './prefix/' + filename,
+		url: './prefix/' + REPO_NAME.replace(/:\s*/g, "").replace(/\//g, '_') + "_namespace.json",
 		dataType: 'json',
+		async: false,
+		cache:false,
 		success: function (data){
-			prefix = data;
-		}
+			initPrefix(data);
+		},
+		error: function(errMsg) {
+			$.ajax({
+				type: "GET",
+				url: "./prefix/main.json",
+				dataType: 'json',
+				async: false,
+				cache:false,
+				success: function (data){
+					initPrefix(data);
+				},
+			});
+	    }
 	});
 }
+
+function initPrefix(data) {
+	prefix = data;
+	stringPrefix = "";
+	$.each(data, function(key, val) {
+		stringPrefix += "PREFIX " + val.prefix + ":<" + val.url + ">";
+	});
+	stringPrefix = encodeURIComponent(stringPrefix);
+} 
 
 var svg = d3.select("#chart").append("svg:svg")
 .attr("width", w)
@@ -224,7 +248,7 @@ function init(json){
 				$.each(currentLiterals, function(i, item){
 					language = (item['l'] == "")?"":" <strong>("+item['l']+")</strong>";
 					datatype = (item['d'] == "")?"":"^^<strong>"+item['d']+"</strong>";
-					td = "<tr><td>"+item['p']+"</td><td>"+item['o']+datatype+language+"</td></tr>"
+					td = "<tr><td>"+item['p']+"</td><td>"+item['o']+"</td></tr>"
 					tablebody.append($(td))
 				})
 			}else{
@@ -250,22 +274,19 @@ function init(json){
 
 
 function restart(url, type, endpoint, resource){
-	
 	var nodes = [];
 	var links = [];
 	var literals = [];
 	if (type == "metamodel") {
-		var query = "select * from <http://localhost:8890/noon/model> where {" +
-					"?s rdfs:subClassOf* ns:Dictionary }";
 		$.ajax({
 			type: "GET",
-			url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+			url: API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=metamodel",
 			dataType: 'json',
 			headers: {
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},
-			success: function (dicsub){
-				var query2 = "select * from <http://localhost:8890/noon/model> where {" +
+			success: function (data){
+				/*var query2 = "select * from <http://localhost:8890/noon/model> where {" +
 								"?subject ?predicate ?object " +
 								"filter not exists {";
 				$.each(dicsub, function(key1, val1) {
@@ -277,12 +298,12 @@ function restart(url, type, endpoint, resource){
 				query2 += "} filter (?predicate != <http://www.w3.org/2000/01/rdf-schema#label> && ?predicate != <http://www.w3.org/2000/01/rdf-schema#comment> && ?predicate != <http://www.w3.org/2000/01/rdf-schema#domain> && ?predicate != <http://www.w3.org/2000/01/rdf-schema#range>)}";
 				$.ajax({
 					type: "GET",
-					url: API_PATH + "/sparql?query=" + encodeURIComponent(query2),
+					url: API_PATH + "/sparql?query=" + encodeURIComponent(query2) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix)),
 					dataType: 'json',
 					headers: {
 						"Authorization": "Basic " + btoa(username + ":" + password)
 					},
-					success: function (data){
+					success: function (data){*/
 						$.each(data, function(key, val) {
 							if (getPrefix(data[key].predicate) != "rdfs:label" && getPrefix(data[key].predicate) != "rdfs:comment" && getPrefix(data[key].predicate) != "rdfs:domain" && getPrefix(data[key].predicate) != "rdfs:range") {
 								var node1 = {name: getPrefix(data[key].subject), uri: data[key].subject, type: "uri", scope:"model"};
@@ -309,7 +330,7 @@ function restart(url, type, endpoint, resource){
 						init({"nodes": nodes, "links": links, "literals": literals});
 						/*$.ajax({
 							type: "GET",
-							url: API_PATH + "/types/ns:Dataset/instances?repo_name=" + REPO_NAME + "&level=model",
+							url: API_PATH + "/types/dm:Dataset/instances?repo_name=" + REPO_NAME + "&level=model",
 							dataType: 'json',
 							headers: {
 								"Authorization": "Basic " + btoa(username + ":" + password)
@@ -335,14 +356,17 @@ function restart(url, type, endpoint, resource){
 								init({"nodes": nodes, "links": links, "literals": literals});
 							}
 						});*/
-					}
-				});
+					/*},
+					error: function(errMsg) {
+						alert(errMsg);
+				    }
+				});*/
 			}
 		});
 	} else if (type == "model" || type == "instance") {
 		$.ajax({
 			type: "GET",
-			url: API_PATH + "/instances/" + url + "/properties?repo_name=" + REPO_NAME + "&level=" + type,
+			url: API_PATH + "/instances/" + url + "/properties?repo_name=" + REPO_NAME + "&level=" + type + "&prefix=" + encodeURIComponent(JSON.stringify(prefix)),
 			dataType: 'json',
 			headers: {
 				"Authorization": "Basic " + btoa(username + ":" + password)
@@ -373,7 +397,7 @@ function restart(url, type, endpoint, resource){
 				});
 				$.ajax({
 					type: "GET",
-					url: API_PATH + "/instances/" + url + "/second_level_properties?repo_name=" + REPO_NAME,
+					url: API_PATH + "/instances/" + url + "/second_level_properties?repo_name=" + REPO_NAME + "&prefix=" + encodeURIComponent(JSON.stringify(prefix)),
 					dataType: 'json',
 					headers: {
 						"Authorization": "Basic " + btoa(username + ":" + password)
@@ -417,9 +441,9 @@ function restart(url, type, endpoint, resource){
 		
 		var urlS;
 		if (type == "ontology") {
-			urlS = API_PATH + "/ontology/?endpointURL=" + endpoint + "&ontology=" + ontology;
+			urlS = API_PATH + "/ontology/?endpointURL=" + endpoint + "&ontology=" + ontology + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
 		} else {
-			urlS = API_PATH + "/ontology/resources/?endpointURL=" + endpoint + "&resource=" + resource;
+			urlS = API_PATH + "/ontology/resources/?endpointURL=" + endpoint + "&resource=" + resource + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
 		}
 		
 		$.ajax({
@@ -431,14 +455,14 @@ function restart(url, type, endpoint, resource){
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},
 			success: function (data){
-				ontologyData = data;
+				/*ontologyData = data;
 				if (type == "ontology") {
 					if (url.length != 0){
-						ontologyData.push({ "subject": ontology, "predicate": "rdfs:subClassOf", "object": url});
+						ontologyData.push({ "subject": ontology, "predicate": "rdf:type", "object": url});
 					}
 				} else {
 					ontologyData.push({ "subject": resource, "predicate": "rdf:type", "object": url});
-				}
+				}*/
 				$.each(data, function(key, val) {
 					var node1 = {name: getPrefix(data[key].subject), uri: data[key].subject, type: "uri", scope:"model"};
 					var node2 = {name: getPrefix(data[key].object), uri: data[key].object, type: "uri", scope:"model"};
@@ -461,18 +485,24 @@ function restart(url, type, endpoint, resource){
 					links.push({"source": source,"target": target, "name":getPrefix(data[key].predicate), "value":10});
 				});
 				init({"nodes": nodes, "links": links, "literals": literals});
-				$("#load_" + type + "_button").append(" into " + url);
-				$("#load_" + type + "_button_div").show();
+				if (url != "null") {
+					$("#load_" + type + "_button").append(" with " + url);
+					$("#load_" + type + "_button_div").show();
+				}
 			}
 		});
 	} else if (type == "lineage") {
-		var query = "select * from <" + REPO_NAME + "/instance> where {" +
-		"?op <http://rdfs.org/sioc/ns#produces> ?produce ." +
-		"?op <http://rdfs.org/sioc/ns#uses> ?use }";
+		var query = "select ?op ?produce ?use ?user ?time (iri(sql:RDF_DATATYPE_OF_OBJ(?time, 'untyped!'))) as ?datatype from <" + REPO_NAME + "/instance> where {" +
+		"?op dm:produces ?produce ." +
+		"?op dm:uses ?use ." +
+		"optional {" +
+		"?op dm:performBy ?user ." +
+		"} optional {" +
+		"?op ex:performedWhen ?time }}";
 		
 		$.ajax({
 			type: "GET",
-			url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+			url: API_PATH + "/sparql?query=" + encodeURIComponent(query) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix)),
 			dataType: 'json',
 			cache:false,
 			headers: {
@@ -480,12 +510,12 @@ function restart(url, type, endpoint, resource){
 			},
 			success: function (data){
 				var query = "select * from <" + REPO_NAME + "/instance> where {" +
-					"?d <http://rdfs.org/sioc/ns#hasFeature> ?f" +
+					"?d dm:hasFeature ?f" +
 					"}";
 			
 				$.ajax({
 					type: "GET",
-					url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+					url: API_PATH + "/sparql?query=" + encodeURIComponent(query) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix)),
 					dataType: 'json',
 					cache:false,
 					headers: {
@@ -495,9 +525,20 @@ function restart(url, type, endpoint, resource){
 						var container = [];
 						prepareLineage(data, url, container, data2);
 						$.each(container, function(key, val) {
-							var node1 = {name: getPrefix(container[key].use), uri: container[key].use, type: "uri", scope:"model"};
-							var node2 = {name: getPrefix(container[key].op), uri: container[key].op, type: "uri", scope:"model"};
-							var node3 = {name: getPrefix(container[key].produce), uri: container[key].produce, type: "uri", scope:"model"};
+							var node1 = {name: getPrefix(container[key].use), uri: container[key].use, type: "uri", scope:"instance"};
+							var node2 = {name: getPrefix(container[key].op), uri: container[key].op, type: "uri", scope:"instance", color:"#8000FF"};
+							var node3 = {name: getPrefix(container[key].produce), uri: container[key].produce, type: "uri", scope:"instance"};
+							//var node4 = null;
+							var literal = [];
+							if (container[key].user && container[key].user != "NULL") {
+								//node4 = {name: getPrefix(container[key].user), uri: container[key].user, type: "uri", scope:"model"};
+								literal.push({"p": "byUser", "o": getPrefix(container[key].user)});
+							}
+							//var node5 = null;
+							if (container[key].time && container[key].time != "NULL") {
+								//node5 = {name: getPrefix(container[key].time), uri: container[key].time, type: "uri", scope:"model"};
+								literal.push({"p": "time", "o": getPrefix(container[key].time)});
+							}
 							if (!containsObject(node1, nodes)) {
 								nodes.push(node1);
 							}
@@ -507,9 +548,17 @@ function restart(url, type, endpoint, resource){
 							if (!containsObject(node3, nodes)) {
 								nodes.push(node3);
 							}
+							/*if (node4 != null && !containsObject(node4, nodes)) {
+								nodes.push(node4);
+							}
+							if (node5 != null && !containsObject(node5, nodes)) {
+								nodes.push(node5);
+							}*/
 							var source = 0;
 							var op = 0;
 							var des = 0;
+							var user = 0;
+							var time = 0;
 							$.each(nodes, function(key2, val2) {
 								if (nodes[key2].name === node1.name) {
 									source = key2;
@@ -520,12 +569,25 @@ function restart(url, type, endpoint, resource){
 								if (nodes[key2].name === node3.name) {
 									des = key2;
 								}
+								/*if (node4 != null && nodes[key2].name === node4.name) {
+									user = key2;
+								}
+								if (node5 != null && nodes[key2].name === node5.name) {
+									time = key2;
+								}*/
 							});
 							if (container[key].op == "hasFeature") {
 								links.push({"source": source,"target": des, "name":"hasFeature", "value":10});
 							} else {
 								links.push({"source": source,"target": op, "name":"input", "value":10});
 								links.push({"source": op,"target": des, "name":"output", "value":10});
+								literals[getPrefix(container[key].op)] = literal;
+								/*if (node4 != null) {
+									links.push({"source": op,"target": user, "name":"byUser", "value":10});
+								}
+								if (node5 != null) {
+									links.push({"source": op,"target": time, "name":"time", "value":10});
+								}*/
 							}
 						});
 						init({"nodes": nodes, "links": links, "literals": literals});
@@ -534,40 +596,77 @@ function restart(url, type, endpoint, resource){
 			}
 		});
 	} else if (type == "usage") {
-		var query = "select * from <" + REPO_NAME + "/instance> where {" +
-		"?subject ns:hasDomainConcept " + url + "}";
+		var query = "select ?ex ?endpoint from <" + REPO_NAME + "/instance> where {"
+				+ url + " owl:sameAs ?ex . "
+				+ "?ex dm:endpoint ?endpoint"
+				+ "}";
 		
 		$.ajax({
 			type: "GET",
-			url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+			url: API_PATH + "/sparql?query=" + encodeURIComponent(query) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix)),
 			dataType: 'json',
 			cache:false,
 			headers: {
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},
 			success: function (data){
-				$.each(data, function(key, val) {
-					var node1 = {name: getPrefix(val.subject), uri: val.subject, type: "uri", scope:"model"};
-					var node2 = {name: getPrefix(url), uri: url, type: "uri", scope:"model"};
-					if (!containsObject(node1, nodes)) {
-						nodes.push(node1);
+				var query = "select distinct ?subject ?predicate ?object where {"
+						+ "{select distinct ?subject ?predicate ?object from <" + REPO_NAME + "/instance> where {"
+						+ "?subject dm:hasDomainConcept " + url + " . "
+						+ "?subject ?predicate ?object .}} union {"
+						+ "select distinct ?subject ?predicate ?object where {"
+						+ url + " owl:sameAs ?subject . "
+						+ "SERVICE " + data[0].endpoint + "{"
+							+ "values (?v) { (owl:ObjectProperty)(owl:DatatypeProperty) }"
+							+ "?predicate a ?v ."
+							+ "?subject ?predicate ?object"
+						+ "}}}"
+						+ "}";
+			
+				$.ajax({
+					type: "GET",
+					url: API_PATH + "/sparql?query=" + encodeURIComponent(query) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix)),
+					dataType: 'json',
+					cache:false,
+					headers: {
+						"Authorization": "Basic " + btoa(username + ":" + password)
+					},
+					success: function (data2){
+						$.each(data2, function(key, val) {
+							var node1 = {name: getPrefix(val.subject), uri: val.subject, type: "uri", scope:"instance"};
+							var node2 = {name: getPrefix(val.object), uri: val.object, type: "uri", scope:"instance"};
+							if (!containsObject(node1, nodes)) {
+								nodes.push(node1);
+							}
+							if (!containsObject(node2, nodes)) {
+								nodes.push(node2);
+							}
+							var source = 0;
+							var target = 0;
+							$.each(nodes, function(key2, val2) {
+								if (nodes[key2].name === node1.name) {
+									source = key2;
+								}
+								if (nodes[key2].name === node2.name) {
+									target = key2;
+								}
+							});
+							links.push({"source": source,"target": target, "name":getPrefix(val.predicate), "value":10});
+						});
+						var source = 0;
+						var target = 0;
+						$.each(nodes, function(key2, val2) {
+							if (nodes[key2].name === url) {
+								source = key2;
+							}
+							if (nodes[key2].name === getPrefix(data[0].ex)) {
+								target = key2;
+							}
+						});
+						links.push({"source": source,"target": target, "name":"owl:sameAs", "value":10});
+						init({"nodes": nodes, "links": links, "literals": literals});
 					}
-					if (!containsObject(node2, nodes)) {
-						nodes.push(node2);
-					}
-					var source = 0;
-					var target = 0;
-					$.each(nodes, function(key2, val2) {
-						if (nodes[key2].name === node1.name) {
-							source = key2;
-						}
-						if (nodes[key2].name === node2.name) {
-							target = key2;
-						}
-					});
-					links.push({"source": source,"target": target, "name":"hasDomainConcept", "value":10});
 				});
-				init({"nodes": nodes, "links": links, "literals": literals});
 			}
 		});
 	}
@@ -708,13 +807,13 @@ function editNode(uri, scope) {
 
 function loadOntology(level) {
 	
-	if (level == "model") {
+	/*if (level == "model") {
 		var query = "select * from <" + REPO_NAME + "/model> where {" +
-		"?subject rdfs:subClassOf ns:Dictionary}";
+		"?subject rdfs:subClassOf dm:Dictionary}";
 		
 		$.ajax({
 			type: "GET",
-			url: API_PATH + "/sparql?query=" + encodeURIComponent(query),
+			url: API_PATH + "/sparql?query=" + encodeURIComponent(query) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix)),
 			dataType: 'json',
 			async:false,
 			cache:false,
@@ -725,8 +824,8 @@ function loadOntology(level) {
 				$.each(ontologyData, function(key, val) {
 					$.each(data, function(key2, val2) {
 						if (getPrefix(val.subject) == getPrefix(val2.subject)) {
-							old_triple = [{ "subject": val2.subject, "predicate": "rdfs:subClassOf", "object": "ns:Dictionary"}];
-							var url = API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=" + level;
+							old_triple = [{ "subject": val2.subject, "predicate": "rdfs:subClassOf", "object": "dm:Dictionary"}];
+							var url = API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=" + level + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
 							$.ajax({
 							    type: "DELETE",
 							    url: url,
@@ -746,18 +845,21 @@ function loadOntology(level) {
 				});
 			}
 		});
+	}*/
+	
+	var reqURL = "";
+	if (level == "model") {
+		reqURL = API_PATH + "/ontology/link?repo_name=" + REPO_NAME + "&endpointURL=<" + endpoint + ">&ontology=" + ontology + "&localElement=" + url + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
+	} else {
+		reqURL = API_PATH + "/ontology/resource/link?repo_name=" + REPO_NAME + "&level=" + level + "&endpointURL=<" + endpoint + ">&resource=" + resource + "&localElement=" + url + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
 	}
 	
-	var url = API_PATH + "/triples?repo_name=" + REPO_NAME + "&level=" + level + "&notCheckValid=true";
 	$.ajax({
 	    type: "POST",
-	    url: url,
+	    url: reqURL,
 	    headers: {
 			"Authorization": "Basic " + btoa(username + ":" + password)
 		},
-	    data: JSON.stringify(ontologyData),
-	    async: false,
-	    contentType: "application/json; charset=utf-8",
 	    success: function(data){
 	    	window.top.location.reload();
 	    },
@@ -783,6 +885,6 @@ function getPrefix(url) {
 	return url;
 }
 
-initPrefix("main.json");
+loadPrefix();
 restart(url, type, endpoint, resource);
 

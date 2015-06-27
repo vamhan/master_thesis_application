@@ -23,6 +23,7 @@ var type = <%= "\"" + request.getParameter("type") + "\"" %>;
 var endpoint = <%= "\"" + request.getParameter("endpoint") + "\"" %>;
 var ontology = <%= "\"" + request.getParameter("ontology") + "\"" %>;
 var resource = <%= "\"" + request.getParameter("resource") + "\"" %>;
+var REPO_NAME = <%= "\"" + session.getAttribute("repo_name") + "\"" %>;
 </script>
 <title>Visual RDF</title>
 <style>
@@ -93,10 +94,10 @@ $(".close").on('click', function(){
   </table>
 </div>
 <div id="load_ontology_button_div" style="display: none">
-	<button id="load_ontology_button" onclick='loadOntology("model")'>Load This Ontology</button>
+	<button id="load_ontology_button" onclick='loadOntology("model")'>Link this external ontology</button>
 </div>
 <div id="load_resource_button_div" style="display: none">
-	<button id="load_resource_button" onclick='loadOntology("instance")'>Load This Resource</button>
+	<button id="load_resource_button" onclick='loadOntology("instance")'>Link this external resource</button>
 </div>
 </body>
 </html>

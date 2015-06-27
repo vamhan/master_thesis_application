@@ -1,9 +1,13 @@
 [{ "prefix": "rdfs", "url": "http://www.w3.org/2000/01/rdf-schema#"},
   { "prefix": "rdf", "url": "http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
-  { "prefix": "ns", "url": "http://rdfs.org/sioc/ns#"},
-  { "prefix": "type", "url": "http://rdfs.org/sioc/types#"},
+  { "prefix": "dm", "url": "http://dm.com#"},
+  { "prefix": "sm4am", "url": "http://sm4am.com#"},
   { "prefix": "xsd", "url": "http://www.w3.org/2001/XMLSchema#"}, 
   { "prefix": "owl", "url": "http://www.w3.org/2002/07/owl#"},
   { "prefix": "dbpedia-owl", "url": "http://dbpedia.org/ontology/"},
   { "prefix": "dbpprop", "url": "http://dbpedia.org/property/"},
-  { "prefix": "dbres", "url": "http://dbpedia.org/resource/"}]
+  { "prefix": "dbres", "url": "http://dbpedia.org/resource/"},
+  { "prefix": "ex", "url": "http://www.example.org/"},
+  { "prefix": "e-Lico-eProPlan-Core", "url": "http://www.e-LICO.eu/ontologies/dmo/e-Lico-eProPlan-Core.owl#"},
+  { "prefix": "e-Lico-eProPlan-DMWF", "url": "http://www.e-LICO.eu/ontologies/dmo/e-Lico-eProPlan-DMWF.owl#"},
+  { "prefix": "e-Lico-eProPlan-Operators-RapidMiner", "url": "http://www.e-LICO.eu/public/dmo/e-Lico-eProPlan-Operators-RapidMiner.owl#"}]
