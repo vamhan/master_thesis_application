@@ -20,6 +20,8 @@
 <script type="text/javascript" src="jquery/config.js"></script>
 <script type="text/javascript" src="jquery/treeExploration.js"></script>
 <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Ek+Mukta">
+<link rel="self" href="http://dm.upc.com/">
+<link rel="hub" href="https://metadata_management_tool.superfeedr.com/">
 <% 
 	String[] nodes = {"dm:DataSet", 
 					"dm:Feature", 
@@ -136,12 +138,12 @@ var password = <%= "\"" + session.getAttribute("password") + "\"" %>;
 							<div id="samantic_usage_button"><button onclick='viewSamanticUsage()'>View Samantic Usage</button></div>
 						<% } %>
 						<% if (Integer.parseInt((String)session.getAttribute("permission")) >= 2) { %>
-					    	<div id="add_predicate_button"><button onclick='openEditPopup("", "", true, "instance")'>Add Property</button></div>
+					    	<div id="add_predicate_button"><button onclick='openEditPopup("", "", true, "instance")'>Add Relationship</button></div>
 					    <% } %>
 					<% } else if (request.getParameter("model") != null && Integer.parseInt((String)session.getAttribute("permission")) == 3){
 						if (!Arrays.asList(nodes).contains(request.getParameter("model"))) {
 						%>
-						<div id="add_predicate_button"><button onclick='openEditPopup("", "", true, "model")'>Add New Predicate</button></div>
+						<div id="add_predicate_button"><button onclick='openEditPopup("", "", true, "model")'>Add New Property</button></div>
 						<% } %>
 					<% } %>
 				<% } %>
@@ -176,14 +178,14 @@ var password = <%= "\"" + session.getAttribute("password") + "\"" %>;
 		<form>
 			<fieldset>
 				<div id="edit_predicate_div">
-					<label id="edit_predicate_label" for="edit_object">Predicate</label> 
+					<label id="edit_predicate_label" for="edit_object">Property</label> 
 					<input type="text" id="edit_predicate" value="" class="text ui-widget-content ui-corner-all" style="width: 100%">
-					<label id="edit_predicate_subpro_label" for="edit_object">Subproperty of</label> 
+					<label id="edit_predicate_subpro_label" for="edit_object">Instance of property</label> 
 					<select id="edit_predicate_dropdown" onchange="prepareObjectDropdown($(this).val(), '<%= request.getParameter("model") != null ? "model" : "instance" %>')">
 					</select>
 				</div>
 				<div>
-					<label for="edit_object">Object</label>
+					<label for="edit_object">Associated with</label>
 					<select id="edit_object">
 					</select>
 				</div>

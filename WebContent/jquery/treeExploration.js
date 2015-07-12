@@ -333,18 +333,18 @@ function openEditPopup(object, predicate, newPre, type) {
 			}
 		});
 		if (type == "instance") {
-			$("#dialog-form").dialog( "option", "title", "Add Property");
-			$("#edit_title").html("Add property for " + $("#info_subject").html());
+			$("#dialog-form").dialog( "option", "title", "Add Relationship");
+			$("#edit_title").html("Add relationship for " + $("#info_subject").html());
 			$("#edit_predicate").hide();
 			$("#edit_predicate_subpro_label").hide();
-			$("#edit_predicate_label").html("Choose from inherited relationships:");
+			$("#edit_predicate_label").html("Choose from inherited properties:");
 			
 		} else {
-			$("#dialog-form").dialog( "option", "title", "Add New Predicate" );
-			$("#edit_title").html("Add new predicate for " + $("#info_subject").html());
+			$("#dialog-form").dialog( "option", "title", "Add New Property" );
+			$("#edit_title").html("Add new property for " + $("#info_subject").html());
 			$("#edit_predicate").show();
 			$("#edit_predicate_subpro_label").show();
-			$("#edit_predicate_label").html("Predicate");
+			$("#edit_predicate_label").html("Property");
 		}
 		
 	} else {
@@ -481,7 +481,8 @@ function addTriple(newPre, type) {
 			object = decodehtml($("#edit_object").val());
 		}
 		if (newPre && type == "model") {
-			triple = [{ "subject": decodehtml($("#edit_predicate").val()), "predicate": "rdfs:subPropertyOf", "object": decodehtml($("#edit_predicate_dropdown").val())},
+			triple = [{ "subject": decodehtml($("#edit_predicate").val()), "predicate": "rdf:type", "object": "rdf:Property"},
+			          { "subject": decodehtml($("#edit_predicate").val()), "predicate": "rdf:type", "object": decodehtml($("#edit_predicate_dropdown").val())},
 			          { "subject": decodehtml($("#info_subject").html()), "predicate": decodehtml($("#edit_predicate").val()), "object": object},
 			          { "subject": decodehtml($("#edit_predicate").val()), "predicate": "rdfs:domain", "object": decodehtml($("#info_subject").html())},
 			          { "subject": decodehtml($("#edit_predicate").val()), "predicate": "rdfs:range", "object": object}];
@@ -612,56 +613,17 @@ function expand(element) {
 }
 
 function prepareObjectDropdown(predicate, type) {
-	var isMeta = false;
-	if (predicate == "dm:hasDomainConcept" || predicate == "dm:hasMiningConcept" || predicate == "dm:hasResponse" || predicate == "dm:containDomainConcept" || predicate == "dm:containMiningConcept") {
-		isMeta = true;
-	} else {
-		var query = "SELECT ?p from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { " +
-						predicate + " rdfs:subPropertyOf ?p ." +
-					"}";
-		var url = API_PATH + "/sparql?query=" + encodeURIComponent(query) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
-		$.ajax({
-			type: "GET",
-			url: url,
-			async: false,
-			headers: {
-			"Authorization": "Basic " + btoa(username + ":" + password)
-			},
-			success: function(data){
-				if (data.length == 0) {
-					isMeta = true;
-				}
-			}
-		});
-	}
-	
 	
 	var query1 = "SELECT distinct ?object from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { " +
 					predicate + " rdfs:range ?range ." +
-					"?subMeta rdfs:subClassOf* ?range .";
-	if (isMeta) {
-		query1 += "?model a ?subMeta . " +
-				  "?subModel rdfs:subClassOf* ?model ." +
-				  "?object a ?subModel";
-	} else {
-		query1 += "?object a ?subMeta . ";
-	}
-	query1 += "}";
+					"?model rdfs:subClassOf* ?range ." +
+				    "?instance a ?model . " +
+				    "?object rdfs:subClassOf* ?instance}";
 	var query2 = "SELECT distinct ?object from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { " +
-					predicate + " rdfs:range ?range .";
-	if (isMeta) {
-		query2 += "?subMeta rdfs:subClassOf* ?range ." +
-					"?model a ?subMeta . " +
-					"?object rdfs:subClassOf* ?model";
-	} else {
-		query2 += "?object rdfs:subClassOf* ?range .";
-	}
-	query2 += "}";
-	var query3 = "SELECT distinct ?object from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { " +
 					predicate + " rdfs:range ?range ." +
-					"?object rdfs:subClassOf* ?range ." +
+					"?object rdfs:subClassOf* ?range }";
 				"}";
-	var url = API_PATH + "/sparql?query=" + encodeURIComponent(type == "instance" ? query1 : query2) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
+	var url = API_PATH + "/sparql?query=" + encodeURIComponent(query1) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
 	$.ajax({
 	    type: "GET",
 	    url: url,
@@ -684,7 +646,7 @@ function prepareObjectDropdown(predicate, type) {
 	    }
 	});
 	
-	var url = API_PATH + "/sparql?query=" + encodeURIComponent(type == "instance" ? query2 : query3) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
+	var url = API_PATH + "/sparql?query=" + encodeURIComponent(query2) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
 	$.ajax({
 	    type: "GET",
 	    url: url,

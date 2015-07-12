@@ -492,13 +492,17 @@ function restart(url, type, endpoint, resource){
 			}
 		});
 	} else if (type == "lineage") {
-		var query = "select ?op ?produce ?use ?user ?time (iri(sql:RDF_DATATYPE_OF_OBJ(?time, 'untyped!'))) as ?datatype from <" + REPO_NAME + "/instance> where {" +
-		"?op dm:produces ?produce ." +
-		"?op dm:uses ?use ." +
+		var query = "select ?op ?produce ?use ?user ?time (iri(sql:RDF_DATATYPE_OF_OBJ(?time, 'untyped!'))) as ?datatype from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> where {" +
+		"?op ?output ?produce ." +
+		"?output rdf:type dm:produces ." +
+		"?op ?input ?use ." +
+		"?input rdf:type dm:uses ." +
 		"optional {" +
-		"?op dm:performBy ?user ." +
+		"?op ?by ?user ." +
+		"?by rdf:type dm:performBy ." +
 		"} optional {" +
-		"?op ex:performedWhen ?time }}";
+		"?op ex:performedWhen ?time ." +
+		"}}";
 		
 		$.ajax({
 			type: "GET",
@@ -509,8 +513,9 @@ function restart(url, type, endpoint, resource){
 				"Authorization": "Basic " + btoa(username + ":" + password)
 			},
 			success: function (data){
-				var query = "select * from <" + REPO_NAME + "/instance> where {" +
-					"?d dm:hasFeature ?f" +
+				var query = "select ?d ?f from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> where {" +
+					"?d ?has ?f . " +
+					"?has rdf:type dm:hasFeature" +
 					"}";
 			
 				$.ajax({
@@ -611,8 +616,9 @@ function restart(url, type, endpoint, resource){
 			},
 			success: function (data){
 				var query = "select distinct ?subject ?predicate ?object where {"
-						+ "{select distinct ?subject ?predicate ?object from <" + REPO_NAME + "/instance> where {"
-						+ "?subject dm:hasDomainConcept " + url + " . "
+						+ "{select distinct ?subject ?predicate ?object from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> where {"
+						+ "?subject ?has " + url + " . "
+						+ "?has rdf:type dm:hasDomainConcept . "
 						+ "?subject ?predicate ?object .}} union {"
 						+ "select distinct ?subject ?predicate ?object where {"
 						+ url + " owl:sameAs ?subject . "
