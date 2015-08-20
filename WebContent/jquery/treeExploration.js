@@ -614,14 +614,14 @@ function expand(element) {
 
 function prepareObjectDropdown(predicate, type) {
 	
-	var query1 = "SELECT distinct ?object from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { " +
+	var query1 = "SELECT distinct ?object from <" + REPO_NAME + "/metamodel> from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { " +
 					predicate + " rdfs:range ?range ." +
 					"?model rdfs:subClassOf* ?range ." +
 				    "?instance a ?model . " +
 				    "?object rdfs:subClassOf* ?instance}";
-	var query2 = "SELECT distinct ?object from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { " +
+	var query2 = "SELECT distinct ?object from <" + REPO_NAME + "/metamodel> from <" + REPO_NAME + "/model> from <" + REPO_NAME + "/instance> WHERE { " +
 					predicate + " rdfs:range ?range ." +
-					"?object rdfs:subClassOf* ?range }";
+					"?object rdfs:subClassOf* ?range}";
 				"}";
 	var url = API_PATH + "/sparql?query=" + encodeURIComponent(query1) + "&prefix=" + encodeURIComponent(JSON.stringify(prefix));
 	$.ajax({
